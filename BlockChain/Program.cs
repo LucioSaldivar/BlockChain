@@ -52,7 +52,8 @@ namespace BlockChain
         public static bool IsValid(this IEnumerable<IBlock> items)
         {
             var enmerable = items.ToList();
-            return enmerable.Zip(enmerable.Skip(1), Tuple.Create).All( block == block.item2.IsValid() && block.item2)
+            return enmerable.Zip(enmerable.Skip(1), Tuple.Create).All(block =>
+            block.Item2.IsValid() && block.Item2.IsValidPrevBlock(block.Item1));
         }
     }
     public interface IBlock
@@ -65,6 +66,14 @@ namespace BlockChain
     }
     public class Block : IBlock
     {
+        public Block(byte[] data)
+        {
+            Data = data ?? throw new ArgumentNullException(nameof(data));
+            Nonce = 0;
+            PrevHash = new byte[] { 0x00 };
+            TimeStamp = DateTime.Now;
+        }
+
         public byte[] Data { get; }
         public byte[] Hash { get; set; }
         public int Nonce { get; set; }
@@ -98,7 +107,7 @@ namespace BlockChain
         }
 
 
-        public int Count => _items.Count;
+        public int Count => Items.Count;
         public IBlock this[int index]
         {
             get => Items[index];
@@ -126,7 +135,21 @@ namespace BlockChain
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            Random rnd = new Random(DateTime.UtcNow.Millisecond);
+            IBlock genisis = new Block(new byte[]{0x00, 0x00, 0x00, 0x00, 0x00});
+            byte[] difficulty = new byte[] { 0x00, 0x00 };
+
+            BlockChain chain = new BlockChain(difficulty, genisis);
+            for (int i = 0; i < 200; i++)
+            {
+                var data = Enumerable.Range(0, 2250).Select(p => (byte)rnd.Next());
+                chain.Add(new Block(data.ToArray()));
+                Console.WriteLine(chain.LastOrDefault()?.ToString());
+
+                Console.WriteLine($"Chain is valid: {chain.IsValid()}");
+            }
+
+            Console.ReadLine();
         }
     }
 }
